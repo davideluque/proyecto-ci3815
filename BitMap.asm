@@ -20,7 +20,13 @@ cabecera: .space 54
 	la $a0, archivo # Leemos la entrada del usuario y almacenamos su valor en un archivo.
 	li $a1, 19 	# El máximo de caracteres a leer es 19.
 	syscall
-# Ver el valor de $v0 y mover el registro para cambiar el salto del línea por un caracter cero (nulo)
+reemplazar:
+	lb $t0, archivo($t1)
+	beq $t0, 10, continuar
+	addi $t1, $t1, 1
+	b reemplazar
+continuar:
+	sb $0, archivo($t1)
 	li $v0, 13
 	la $a0, archivo # Llamamos a la lectura de archivos con la direccion en el string leido.
 	li $a1, 0	# Read-only.
@@ -37,3 +43,4 @@ abrio_correctamente:
 	la $a1, cabecera # Leemos el archivo y almacenamos los primeros 54 bytes en espacio reservado como cabecera 
 	la $a2, 54
 	syscall
+	
