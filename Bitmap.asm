@@ -40,7 +40,7 @@
 	configuracion_4: .asciiz "\nAjusta el valor Base address for display con el valor: 0x10040000 (heap)"
 	
 	opciones_menu: .asciiz "\n\n 1 - Visualizar imagen \n 2 - Convertir imagen blanco y negro \n 3 - Rotar 90 grados la imagen \n 4 - Flip horizontal \n 5 - Flip vertical \n Introduzca la opcion que desea: "
-#	opciones: .word visualizar, blanco_negro, rotar, flip_h, flip_v
+	#opciones: .word visualizar, blanco_negro, # rotar, flip_h, flip_v
 
 			
 .text
@@ -127,10 +127,11 @@ formato_correcto:
 	li $t1, 256
 	li $t2, 24
 	
+	# MENSAJE DE ERROR SI LA PROFUNDIDAD NO ES 3
 	div $t2, $t2, 0x8 # Aquí se obtiene la profundidad de color en bytes
 	
 	#	****************************************************** 		#
-	#	VALORES T4 Y T5 SE DEBEN SALVAR!!!				#
+	#		VALORES T4 Y T5 SE DEBEN SALVAR!!!			#
 	#	******************************************************		#
 	
 	mul $t3, $t0, $t1 # Ancho x Alto
@@ -146,7 +147,7 @@ formato_correcto:
 	li $v0, 9
 	move $a0, $t5
 	syscall
-	
+
 	sw $v0, dir_display
 	
 	li $v0, 9
@@ -194,7 +195,7 @@ formato_correcto:
 	la $a0, enter_espera
 	li $a1, 10
 	syscall
-	
+
 menu:
 	li $v0, 4
 	la $a0, opciones_menu
@@ -209,9 +210,9 @@ visualizar:
 	addi $t4, $t3, 512	# DirBitMapDisplay + Ancho * 4 es el tope de la fila
 	
 	lw $t0, dir_file	# Posiciono t0 con la dirección de los bytes del archivo	
+	move $s2, $t0		# Registro auxiliar para marcar el fin de la lectura.
 	addi $t0, $t0, 97920  	# Alto - 1 x Ancho x 3
 
-### MODIFICAR S2 PARA QUE NO SE VAYA AL INFINITO
 cargar_en_bitmap:
 	lbu $t1, ($t0)		# Cargo el azul
 	lbu $t2, 1($t0)		# Cargo el verde
@@ -224,12 +225,35 @@ cargar_en_bitmap:
 	addi $t3, $t3, 4	# Me muevo a la siguiente palabra para el bitmap display
 	addi, $t0, $t0, 3	# Me muevo al inicio del siguiente píxel de la imagen
 	bne $t3, $t4, cargar_en_bitmap 		# ¿Llegue al tope de la fila? Ancho * 4
-	beq $t3, $s2, carga_finalizada # Antes, verifico si ese tope es el fin de la imagen para no hacer las operacones.
+	beq $t3, $s2, blanco_negro 	# AQUI BRANCH A MENU Antes, se verifica si ese tope es el fin de la imagen para no hacer las operacones.
 	subi $t0, $t0, 768	# Se llegó al tope de la fila, restar Ancho * 3 para volver al inicio - Ancho * 3
 				# para bajar
 	addi $t4, $t3, 512	# Apuntador de mi BMD + (Ancho * 4)
 	b cargar_en_bitmap
-carga_finalizada:
-	li $v0, 10
-	syscall				
-	# DEBERIA RETORNAR AL MENU
+
+blanco_negro:
+	lw $a0, dir_display
+	lw $a2, dir_file
+	add $a1, $a0, 512
+cambiar_bytes:	
+	lbu $t1, ($a0)		# Cargo el azul
+	lbu $t2, 1($a0)		# Cargo el verde
+	add $t2, $t1, $t2	# Sumo ambos colores
+	lbu $t1, 2($a0)		# Ya no necesito el azul. Lo reemplazo cargando el rojo.
+	add $t2, $t2, $t1	# En t2 tengo la suma de los tres colores.
+	div $t2, $t2, 3		# Promedio los colores
+	sll $t3, $t2, 8		
+	or $t3, $t3, $t2
+	sll $t2, $t2, 16
+	or $t2, $t2, $t3
+	sw $t2, ($a0)
+	addi $a0, $a0, 4
+	beq $a0, $a2, flip_v
+	b cambiar_bytes
+	
+flip_v:
+	lw $a0, dir_display
+	lw $a2, dir_file
+
+realizar_flip:
+	lw $t0, 
